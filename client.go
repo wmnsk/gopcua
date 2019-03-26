@@ -125,7 +125,7 @@ type Client struct {
 //
 // https://godoc.org/github.com/gopcua/opcua#Option
 func NewClient(endpoint string, opts ...Option) *Client {
-	cfg, sessionCfg := ApplyConfig(opts...)
+	cfg, sessionCfg := ApplyConfig(DefaultClientConfig(), DefaultSessionConfig(), opts...)
 	return &Client{
 		endpointURL:   endpoint,
 		cfg:           cfg,

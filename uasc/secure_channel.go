@@ -50,6 +50,9 @@ type SecureChannel struct {
 	// reqhdr is the header for the next request.
 	reqhdr *ua.RequestHeader
 
+	// resphdr is the header for the next response.
+	resphdr *ua.ResponseHeader
+
 	// state is the state of the secure channel.
 	// Must be accessed with atomic.LoadInt32/StoreInt32
 	state int32
@@ -322,11 +325,24 @@ func (s *SecureChannel) newRequestMessage(req ua.Request, authToken *ua.NodeID, 
 // todo(fs): this method is most likely needed for the server and we haven't tested it yet.
 // todo(fs): it exists to implement the handleOpenSecureChannelRequest() method during the
 // todo(fs): refactor to remove the reflect code. It will likely change.
-func (s *SecureChannel) SendResponse(req ua.Response) error {
-	typeID := ua.ServiceTypeID(req)
+func (s *SecureChannel) SendResponse(req ua.Request, svc ua.Response) error {
+	typeID := ua.ServiceTypeID(svc)
 	if typeID == 0 {
 		return errors.Errorf("unknown service %T. Did you call register?", req)
 	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// s.cfg.SequenceNumber++
+	// s.cfg.RequestID++
+	svc.SetHeader(&ua.ResponseHeader{
+		Timestamp:          time.Now(),
+		RequestHandle:      req.Header().RequestHandle,
+		ServiceDiagnostics: &ua.DiagnosticInfo{},
+		StringTable:        []string{},
+		AdditionalHeader:   ua.NewExtensionObject(nil),
+	})
 
 	// encode the message
 	m := s.newMessage(req, typeID)
@@ -602,6 +618,7 @@ func (s *SecureChannel) receive(ctx context.Context) (uint32, interface{}, error
 					return reqid, svc, status
 				}
 			}
+
 			return reqid, svc, err
 		}
 	}
@@ -756,8 +773,6 @@ func (s *SecureChannel) closeSecureChannel() error {
 func (s *SecureChannel) handleOpenSecureChannelRequest(svc interface{}) error {
 	debug.Printf("handleOpenSecureChannelRequest: Got OPN Request\n")
 
-	var err error
-
 	req, ok := svc.(*ua.OpenSecureChannelRequest)
 	if !ok {
 		debug.Printf("Expected OpenSecureChannel Request, got %T\n", svc)
@@ -765,6 +780,8 @@ func (s *SecureChannel) handleOpenSecureChannelRequest(svc interface{}) error {
 
 	s.cfg.Lifetime = req.RequestedLifetime
 	s.cfg.SecurityMode = req.SecurityMode
+	s.secureChannelID++
+	s.securityTokenID++
 
 	nonce := make([]byte, s.enc.NonceLength())
 	if _, err := rand.Read(nonce); err != nil {
@@ -788,10 +805,11 @@ func (s *SecureChannel) handleOpenSecureChannelRequest(svc interface{}) error {
 		ServerNonce: nonce,
 	}
 
-	if err := s.SendResponse(resp); err != nil {
+	if err := s.SendResponse(req, resp); err != nil {
 		return err
 	}
 
+	var err error
 	s.enc, err = uapolicy.Symmetric(s.cfg.SecurityPolicyURI, nonce, req.ClientNonce)
 	if err != nil {
 		return err

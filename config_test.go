@@ -557,7 +557,7 @@ func TestOptions(t *testing.T) {
 				ttsc = DefaultSessionConfig()
 			}
 
-			c, sc := ApplyConfig(tt.opt)
+			c, sc := ApplyConfig(DefaultClientConfig(), DefaultSessionConfig(), tt.opt)
 			verify.Values(t, "", c, ttc)
 			verify.Values(t, "", sc, ttsc)
 		})

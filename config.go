@@ -31,6 +31,17 @@ func DefaultClientConfig() *uasc.Config {
 	}
 }
 
+// DefaultServerConfig returns the default configuration for a server
+// to establish a secure channel.
+func DefaultServerConfig() *uasc.Config {
+	return &uasc.Config{
+		SecurityPolicyURI: ua.SecurityPolicyURINone,
+		SecurityMode:      ua.MessageSecurityModeNone,
+		Lifetime:          uint32(time.Hour / time.Millisecond),
+		RequestTimeout:    10 * time.Second,
+	}
+}
+
 // DefaultSessionConfig returns the default configuration for a client
 // to establish a session.
 func DefaultSessionConfig() *uasc.SessionConfig {
@@ -47,11 +58,24 @@ func DefaultSessionConfig() *uasc.SessionConfig {
 	}
 }
 
+// DefaultServerSessionConfig returns the default configuration for a server.
+func DefaultServerSessionConfig() *uasc.SessionConfig {
+	return &uasc.SessionConfig{
+		SessionTimeout: 20 * time.Minute,
+		ClientDescription: &ua.ApplicationDescription{
+			ApplicationURI:  "urn:gopcua:server",
+			ProductURI:      "urn:gopcua",
+			ApplicationName: &ua.LocalizedText{Text: "gopcua - OPC UA implementation in Go"},
+			ApplicationType: ua.ApplicationTypeServer,
+		},
+		LocaleIDs:          []string{"en-us"},
+		UserTokenSignature: &ua.SignatureData{},
+	}
+}
+
 // ApplyConfig applies the config options to the default configuration.
 // todo(fs): Can we find a better name?
-func ApplyConfig(opts ...Option) (*uasc.Config, *uasc.SessionConfig) {
-	c := DefaultClientConfig()
-	sc := DefaultSessionConfig()
+func ApplyConfig(c *uasc.Config, sc *uasc.SessionConfig, opts ...Option) (*uasc.Config, *uasc.SessionConfig) {
 	for _, opt := range opts {
 		opt(c, sc)
 	}
