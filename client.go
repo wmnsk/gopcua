@@ -173,7 +173,11 @@ func (c *Client) Dial(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	c.sechan, err = uasc.NewSecureChannel(c.endpointURL, c.conn, c.cfg)
+	c.sechan, err = uasc.NewSecureChannel(uasc.SecureChannelConfig{
+		Endpoint: c.endpointURL,
+		Conn:     c.conn,
+		Cfg:      c.cfg,
+	})
 	if err != nil {
 		_ = c.conn.Close()
 		return err

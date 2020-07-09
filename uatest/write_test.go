@@ -26,7 +26,7 @@ func TestWrite(t *testing.T) {
 		{ua.NewStringNodeID(2, "ro_bool"), false, ua.StatusBadUserAccessDenied},
 	}
 
-	srv := NewServer("rw_server.py")
+	srv := NewPythonServer("rw_server.py")
 	defer srv.Close()
 
 	c := opcua.NewClient(srv.Endpoint, srv.Opts...)

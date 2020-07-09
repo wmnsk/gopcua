@@ -14,7 +14,7 @@ import (
 // secure channel.
 func (s *SecureChannel) signAndEncrypt(m *Message, b []byte) ([]byte, error) {
 	// Nothing to do
-	if s.cfg.SecurityMode == ua.MessageSecurityModeNone {
+	if s.cfg.SecurityPolicyURI == ua.SecurityPolicyURINone {
 		return b, nil
 	}
 
@@ -83,7 +83,7 @@ func (s *SecureChannel) verifyAndDecrypt(m *MessageChunk, b []byte) ([]byte, err
 	}
 
 	// Nothing to do
-	if s.cfg.SecurityMode == ua.MessageSecurityModeNone {
+	if s.cfg.SecurityPolicyURI == ua.SecurityPolicyURINone {
 		return m.Data, nil
 	}
 

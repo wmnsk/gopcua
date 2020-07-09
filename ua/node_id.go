@@ -6,6 +6,7 @@ package ua
 
 import (
 	"encoding/base64"
+	"encoding/xml"
 	"fmt"
 	"math"
 	"strconv"
@@ -24,6 +25,19 @@ type NodeID struct {
 	nid  uint32
 	bid  []byte
 	gid  *GUID
+}
+
+func (n *NodeID) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var s string
+	if err := d.DecodeElement(&s, &start); err != nil {
+		return err
+	}
+	id, err := ParseNodeID(s)
+	if err != nil {
+		return err
+	}
+	*n = *id
+	return nil
 }
 
 // NewTwoByteNodeID returns a new two byte node id.

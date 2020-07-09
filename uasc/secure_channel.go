@@ -38,6 +38,19 @@ type Response struct {
 	Err   error
 }
 
+func (r Response) UARequest() ua.Request {
+	if x, ok := r.V.(ua.Request); ok {
+		return x
+	}
+	return nil
+}
+func (r Response) UAResponse() ua.Response {
+	if x, ok := r.V.(ua.Response); ok {
+		return x
+	}
+	return nil
+}
+
 type SecureChannel struct {
 	EndpointURL string
 
@@ -96,40 +109,52 @@ type SecureChannel struct {
 	securityTokenID uint32
 }
 
-func NewSecureChannel(endpoint string, c *uacp.Conn, cfg *Config) (*SecureChannel, error) {
-	if c == nil {
+type SecureChannelConfig struct {
+	Endpoint        string
+	Conn            *uacp.Conn
+	Cfg             *Config
+	SecureChannelID uint32
+	SequenceNumber  uint32
+	SecurityTokenID uint32
+}
+
+func NewSecureChannel(c SecureChannelConfig) (*SecureChannel, error) {
+	if c.Conn == nil {
 		return nil, errors.Errorf("no connection")
 	}
-	if cfg == nil {
+	if c.Cfg == nil {
 		return nil, errors.Errorf("no secure channel config")
 	}
 
-	if cfg.SecurityPolicyURI != ua.SecurityPolicyURINone {
-		if cfg.SecurityMode == ua.MessageSecurityModeNone {
-			return nil, errors.Errorf("invalid channel config: Security policy '%s' cannot be used with '%s'", cfg.SecurityPolicyURI, cfg.SecurityMode)
+	if c.Cfg.SecurityPolicyURI != ua.SecurityPolicyURINone {
+		if c.Cfg.SecurityMode == ua.MessageSecurityModeNone {
+			return nil, errors.Errorf("invalid channel config: Security policy '%s' cannot be used with '%s'", c.Cfg.SecurityPolicyURI, c.Cfg.SecurityMode)
 		}
-		if cfg.LocalKey == nil {
-			return nil, errors.Errorf("invalid channel config: Security policy '%s' requires a private key", cfg.SecurityPolicyURI)
+		if c.Cfg.LocalKey == nil {
+			return nil, errors.Errorf("invalid channel config: Security policy '%s' requires a private key", c.Cfg.SecurityPolicyURI)
 		}
 	}
 
 	// Force the security mode to None if the policy is also None
-	if cfg.SecurityPolicyURI == ua.SecurityPolicyURINone {
-		cfg.SecurityMode = ua.MessageSecurityModeNone
+	if c.Cfg.SecurityPolicyURI == ua.SecurityPolicyURINone {
+		c.Cfg.SecurityMode = ua.MessageSecurityModeNone
 	}
 
 	return &SecureChannel{
-		EndpointURL: endpoint,
-		c:           c,
-		cfg:         cfg,
+		EndpointURL: c.Endpoint,
+		c:           c.Conn,
+		cfg:         c.Cfg,
 		reqhdr: &ua.RequestHeader{
-			TimeoutHint:      uint32(cfg.RequestTimeout / time.Millisecond),
+			TimeoutHint:      uint32(c.Cfg.RequestTimeout / time.Millisecond),
 			AdditionalHeader: ua.NewExtensionObject(nil),
 		},
-		state:     secureChannelCreated,
-		handler:   make(map[uint32]chan Response),
-		chunks:    make(map[uint32][]*MessageChunk),
-		requestID: cfg.RequestIDSeed,
+		state:           secureChannelCreated,
+		handler:         make(map[uint32]chan Response),
+		chunks:          make(map[uint32][]*MessageChunk),
+		requestID:       c.Cfg.RequestIDSeed,
+		secureChannelID: c.SecureChannelID,
+		sequenceNumber:  c.SequenceNumber,
+		securityTokenID: c.SecurityTokenID,
 	}, nil
 }
 
@@ -326,6 +351,11 @@ func (s *SecureChannel) SendResponse(req ua.Response) error {
 	typeID := ua.ServiceTypeID(req)
 	if typeID == 0 {
 		return errors.Errorf("unknown service %T. Did you call register?", req)
+	}
+
+	s.sequenceNumber++
+	if s.sequenceNumber > math.MaxUint32-1023 {
+		s.sequenceNumber = 1
 	}
 
 	// encode the message

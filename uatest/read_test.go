@@ -24,7 +24,7 @@ func TestRead(t *testing.T) {
 		{ua.NewStringNodeID(2, "rw_int32"), int32(5)},
 	}
 
-	srv := NewServer("rw_server.py")
+	srv := NewPythonServer("rw_server.py")
 	defer srv.Close()
 
 	c := opcua.NewClient(srv.Endpoint, srv.Opts...)
