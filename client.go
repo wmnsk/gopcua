@@ -154,6 +154,15 @@ func (c *Client) Connect(ctx context.Context) (err error) {
 	return nil
 }
 
+// IsConnected returns whether the a secure channel is currently established.
+func (c *Client) IsConnected(ctx context.Context) bool {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	return c.sechan != nil
+}
+
 // Dial establishes a secure channel.
 func (c *Client) Dial(ctx context.Context) error {
 	if ctx == nil {
