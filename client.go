@@ -160,6 +160,9 @@ func (c *Client) Dial(ctx context.Context) error {
 		ctx = context.Background()
 	}
 
+	ctx, cancel := context.WithTimeout(ctx, c.cfg.DialTimeout)
+	defer cancel()
+
 	c.once.Do(func() { c.session.Store((*Session)(nil)) })
 	if c.sechan != nil {
 		return errors.Errorf("secure channel already connected")

@@ -21,7 +21,7 @@ func main() {
 	ctx := context.Background()
 
 	log.Printf("Listening on %s", *endpoint)
-	l, err := uacp.Listen(*endpoint, nil)
+	l, err := uacp.Listen(ctx, *endpoint, nil)
 	if err != nil {
 		log.Fatal(err)
 	}

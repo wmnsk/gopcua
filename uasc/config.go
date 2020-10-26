@@ -65,6 +65,9 @@ type Config struct {
 	// RequestTimeout is timeout duration for all synchronous requests over SecureChannel.
 	// If the Server doesn't respond within RequestTimeout time, Client returns StatusBadTimeout
 	RequestTimeout time.Duration
+
+	// DialTimeout is the timeout for name resolution and establishment of a network connection
+	DialTimeout time.Duration
 }
 
 // SessionConfig is a set of common configurations used in Session.

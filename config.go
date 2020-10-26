@@ -28,6 +28,7 @@ func DefaultClientConfig() *uasc.Config {
 		SecurityMode:      ua.MessageSecurityModeNone,
 		Lifetime:          uint32(time.Hour / time.Millisecond),
 		RequestTimeout:    10 * time.Second,
+		DialTimeout:       10 * time.Second,
 	}
 }
 
@@ -414,5 +415,12 @@ func AuthIssuedToken(tokenData []byte) Option {
 func RequestTimeout(t time.Duration) Option {
 	return func(c *uasc.Config, sc *uasc.SessionConfig) {
 		c.RequestTimeout = t
+	}
+}
+
+// DialTimeout sets the timeout for name resolution and establishment of a network connection
+func DialTimeout(t time.Duration) Option {
+	return func(c *uasc.Config, sc *uasc.SessionConfig) {
+		c.DialTimeout = t
 	}
 }

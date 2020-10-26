@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"sync/atomic"
+	"time"
 
 	"github.com/gopcua/opcua/debug"
 	"github.com/gopcua/opcua/errors"
@@ -23,6 +24,7 @@ const (
 	DefaultSendBufSize    = 0xffff
 	DefaultMaxChunkCount  = 512
 	DefaultMaxMessageSize = 2 * MB
+	DefaultDialTimeout    = time.Second * 10
 )
 
 // connid stores the current connection id. updated with atomic.AddUint32
@@ -35,12 +37,15 @@ func nextid() uint32 {
 
 func Dial(ctx context.Context, endpoint string) (*Conn, error) {
 	debug.Printf("Connect to %s", endpoint)
-	_, raddr, err := ResolveEndpoint(endpoint)
+
+	_, raddr, err := ResolveEndpoint(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
+
 	var dialer net.Dialer
-	c, err := dialer.DialContext(ctx, "tcp", raddr.String())
+
+	c, err := dialer.DialContext(ctx, "tcp", raddr.Host)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +84,7 @@ type Listener struct {
 // If the IP field of laddr is nil or an unspecified IP address, Listen listens
 // on all available unicast and anycast IP addresses of the local system.
 // If the Port field of laddr is 0, a port number is automatically chosen.
-func Listen(endpoint string, ack *Acknowledge) (*Listener, error) {
+func Listen(ctx context.Context, endpoint string, ack *Acknowledge) (*Listener, error) {
 	if ack == nil {
 		ack = &Acknowledge{
 			ReceiveBufSize: DefaultReceiveBufSize,
@@ -89,16 +94,18 @@ func Listen(endpoint string, ack *Acknowledge) (*Listener, error) {
 		}
 	}
 
-	network, laddr, err := ResolveEndpoint(endpoint)
+	_, laddr, err := ResolveEndpoint(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
-	l, err := net.ListenTCP(network, laddr)
+
+	var lc net.ListenConfig
+	l, err := lc.Listen(ctx, "tcp", laddr.Host)
 	if err != nil {
 		return nil, err
 	}
 	return &Listener{
-		l:        l,
+		l:        l.(*net.TCPListener),
 		ack:      ack,
 		endpoint: endpoint,
 	}, nil
