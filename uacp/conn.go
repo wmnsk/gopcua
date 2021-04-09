@@ -6,6 +6,7 @@ package uacp
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"sync/atomic"
@@ -25,6 +26,26 @@ const (
 	DefaultMaxMessageSize = 2 * MB
 )
 
+var (
+	// DefaultClientACK is the ACK handshake message sent to the server
+	// for client connections.
+	DefaultClientACK = &Acknowledge{
+		ReceiveBufSize: DefaultReceiveBufSize,
+		SendBufSize:    DefaultSendBufSize,
+		MaxChunkCount:  0, // use what the server wants
+		MaxMessageSize: 0, // use what the server wants
+	}
+
+	// DefaultServerACK is the ACK handshake message sent to the client
+	// for server connections.
+	DefaultServerACK = &Acknowledge{
+		ReceiveBufSize: DefaultReceiveBufSize,
+		SendBufSize:    DefaultSendBufSize,
+		MaxChunkCount:  DefaultMaxChunkCount,
+		MaxMessageSize: DefaultMaxMessageSize,
+	}
+)
+
 // connid stores the current connection id. updated with atomic.AddUint32
 var connid uint32
 
@@ -33,36 +54,52 @@ func nextid() uint32 {
 	return atomic.AddUint32(&connid, 1)
 }
 
-func Dial(ctx context.Context, endpoint string) (*Conn, error) {
-	debug.Printf("Connect to %s", endpoint)
+// Dialer establishes a connection to an endpoint.
+type Dialer struct {
+	// Dialer establishes the TCP connection. Defaults to net.Dialer.
+	Dialer *net.Dialer
+
+	// ClientACK defines the connection parameters requested by the client.
+	// Defaults to DefaultClientACK.
+	ClientACK *Acknowledge
+}
+
+func (d *Dialer) Dial(ctx context.Context, endpoint string) (*Conn, error) {
+	debug.Printf("Connecting to %s", endpoint)
 	_, raddr, err := ResolveEndpoint(endpoint)
 	if err != nil {
 		return nil, err
 	}
-	var dialer net.Dialer
-	c, err := dialer.DialContext(ctx, "tcp", raddr.String())
+
+	dl := d.Dialer
+	if dl == nil {
+		dl = &net.Dialer{}
+	}
+
+	c, err := dl.DialContext(ctx, "tcp", raddr.String())
 	if err != nil {
 		return nil, err
 	}
 
-	conn := &Conn{
-		TCPConn: c.(*net.TCPConn),
-		id:      nextid(),
-		ack: &Acknowledge{
-			ReceiveBufSize: DefaultReceiveBufSize,
-			SendBufSize:    DefaultSendBufSize,
-			MaxChunkCount:  0, // use what the server wants
-			MaxMessageSize: 0, // use what the server wants
-		},
+	conn, err := NewConn(c.(*net.TCPConn), d.ClientACK)
+	if err != nil {
+		c.Close()
+		return nil, err
 	}
 
 	debug.Printf("conn %d: start HEL/ACK handshake", conn.id)
-	if err := conn.handshake(endpoint); err != nil {
+	if err := conn.Handshake(endpoint); err != nil {
 		debug.Printf("conn %d: HEL/ACK handshake failed: %s", conn.id, err)
 		conn.Close()
 		return nil, err
 	}
 	return conn, nil
+}
+
+// Dial uses the default dialer to establish a connection to the endpoint
+func Dial(ctx context.Context, endpoint string) (*Conn, error) {
+	d := &Dialer{}
+	return d.Dial(ctx, endpoint)
 }
 
 // Listener is a OPC UA Connection Protocol network listener.
@@ -81,14 +118,8 @@ type Listener struct {
 // If the Port field of laddr is 0, a port number is automatically chosen.
 func Listen(endpoint string, ack *Acknowledge) (*Listener, error) {
 	if ack == nil {
-		ack = &Acknowledge{
-			ReceiveBufSize: DefaultReceiveBufSize,
-			SendBufSize:    DefaultSendBufSize,
-			MaxChunkCount:  DefaultMaxChunkCount,
-			MaxMessageSize: DefaultMaxMessageSize,
-		}
+		ack = DefaultServerACK
 	}
-
 	network, laddr, err := ResolveEndpoint(endpoint)
 	if err != nil {
 		return nil, err
@@ -142,6 +173,16 @@ type Conn struct {
 	ack *Acknowledge
 }
 
+func NewConn(c *net.TCPConn, ack *Acknowledge) (*Conn, error) {
+	if c == nil {
+		return nil, fmt.Errorf("no connection")
+	}
+	if ack == nil {
+		ack = DefaultClientACK
+	}
+	return &Conn{TCPConn: c, id: nextid(), ack: ack}, nil
+}
+
 func (c *Conn) ID() uint32 {
 	return c.id
 }
@@ -167,7 +208,7 @@ func (c *Conn) Close() error {
 	return c.TCPConn.Close()
 }
 
-func (c *Conn) handshake(endpoint string) error {
+func (c *Conn) Handshake(endpoint string) error {
 	hel := &Hello{
 		Version:        c.ack.Version,
 		ReceiveBufSize: c.ack.ReceiveBufSize,
