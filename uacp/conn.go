@@ -27,10 +27,15 @@ const (
 
 // connid stores the current connection id. updated with atomic.AddUint32
 var connid uint32
+var defaultDialer atomic.Value
 
 // nextid returns the next connection id
 func nextid() uint32 {
 	return atomic.AddUint32(&connid, 1)
+}
+
+func SetDefaultDialler(dialler *net.Dialer) {
+	defaultDialer.Store(dialler)
 }
 
 func Dial(ctx context.Context, endpoint string) (*Conn, error) {
@@ -39,7 +44,14 @@ func Dial(ctx context.Context, endpoint string) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	var dialer net.Dialer
+	var dialer *net.Dialer
+	v := defaultDialer.Load()
+	if v == nil {
+		dialer = &net.Dialer{}
+	} else {
+		dialer = v.(*net.Dialer)
+	}
+
 	c, err := dialer.DialContext(ctx, "tcp", raddr.String())
 	if err != nil {
 		return nil, err
