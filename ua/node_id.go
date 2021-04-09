@@ -20,63 +20,63 @@ import (
 // NodeID is an identifier for a node in the address space of an OPC UA Server.
 // The NodeID object encodes all different node id types.
 type NodeID struct {
-	mask NodeIDType
-	ns   uint16
-	nid  uint32
-	bid  []byte
-	gid  *GUID
+	Mask NodeIDType
+	Ns   uint16
+	Nid  uint32
+	Bid  []byte
+	Gid  *GUID
 }
 
 // NewTwoByteNodeID returns a new two byte node id.
 func NewTwoByteNodeID(id uint8) *NodeID {
 	return &NodeID{
-		mask: NodeIDTypeTwoByte,
-		nid:  uint32(id),
+		Mask: NodeIDTypeTwoByte,
+		Nid:  uint32(id),
 	}
 }
 
 // NewFourByteNodeID returns a new four byte node id.
 func NewFourByteNodeID(ns uint8, id uint16) *NodeID {
 	return &NodeID{
-		mask: NodeIDTypeFourByte,
-		ns:   uint16(ns),
-		nid:  uint32(id),
+		Mask: NodeIDTypeFourByte,
+		Ns:   uint16(ns),
+		Nid:  uint32(id),
 	}
 }
 
 // NewNumericNodeID returns a new numeric node id.
 func NewNumericNodeID(ns uint16, id uint32) *NodeID {
 	return &NodeID{
-		mask: NodeIDTypeNumeric,
-		ns:   ns,
-		nid:  id,
+		Mask: NodeIDTypeNumeric,
+		Ns:   ns,
+		Nid:  id,
 	}
 }
 
 // NewStringNodeID returns a new string node id.
 func NewStringNodeID(ns uint16, id string) *NodeID {
 	return &NodeID{
-		mask: NodeIDTypeString,
-		ns:   ns,
-		bid:  []byte(id),
+		Mask: NodeIDTypeString,
+		Ns:   ns,
+		Bid:  []byte(id),
 	}
 }
 
 // NewGUIDNodeID returns a new GUID node id.
 func NewGUIDNodeID(ns uint16, id string) *NodeID {
 	return &NodeID{
-		mask: NodeIDTypeGUID,
-		ns:   ns,
-		gid:  NewGUID(id),
+		Mask: NodeIDTypeGUID,
+		Ns:   ns,
+		Gid:  NewGUID(id),
 	}
 }
 
 // NewByteStringNodeID returns a new byte string node id.
 func NewByteStringNodeID(ns uint16, id []byte) *NodeID {
 	return &NodeID{
-		mask: NodeIDTypeByteString,
-		ns:   ns,
-		bid:  id,
+		Mask: NodeIDTypeByteString,
+		Ns:   ns,
+		Bid:  id,
 	}
 }
 
@@ -173,38 +173,38 @@ func ParseNodeID(s string) (*NodeID, error) {
 // EncodingMask returns the encoding mask field including the
 // type information and additional flags.
 func (n *NodeID) EncodingMask() NodeIDType {
-	return n.mask
+	return n.Mask
 }
 
 // Type returns the node id type in EncodingMask.
 func (n *NodeID) Type() NodeIDType {
-	return n.mask & NodeIDType(0xf)
+	return n.Mask & NodeIDType(0xf)
 }
 
 // URIFlag returns whether the URI flag is set in EncodingMask.
 func (n *NodeID) URIFlag() bool {
-	return n.mask&0x80 == 0x80
+	return n.Mask&0x80 == 0x80
 }
 
 // SetURIFlag sets NamespaceURI flag in EncodingMask.
 func (n *NodeID) SetURIFlag() {
-	n.mask |= 0x80
+	n.Mask |= 0x80
 }
 
 // IndexFlag returns whether the Index flag is set in EncodingMask.
 func (n *NodeID) IndexFlag() bool {
-	return n.mask&0x40 == 0x40
+	return n.Mask&0x40 == 0x40
 }
 
 // SetIndexFlag sets NamespaceURI flag in EncodingMask.
 func (n *NodeID) SetIndexFlag() {
-	n.mask |= 0x40
+	n.Mask |= 0x40
 }
 
 // Namespace returns the namespace id. For two byte node ids
 // this will always be zero.
 func (n *NodeID) Namespace() uint16 {
-	return n.ns
+	return n.Ns
 }
 
 // SetNamespace sets the namespace id. It returns an error
@@ -221,14 +221,14 @@ func (n *NodeID) SetNamespace(v uint16) error {
 		if max := uint16(math.MaxUint8); v > max {
 			return errors.Errorf("out of range [0..%d]: %d", max, v)
 		}
-		n.ns = uint16(v)
+		n.Ns = uint16(v)
 		return nil
 
 	default:
 		if max := uint16(math.MaxUint16); v > max {
 			return errors.Errorf("out of range [0..%d]: %d", max, v)
 		}
-		n.ns = uint16(v)
+		n.Ns = uint16(v)
 		return nil
 	}
 }
@@ -237,7 +237,7 @@ func (n *NodeID) SetNamespace(v uint16) error {
 // TwoByte, FourByte or Numeric. For all other types IntID
 // returns 0.
 func (n *NodeID) IntID() uint32 {
-	return n.nid
+	return n.Nid
 }
 
 // SetIntID sets the identifier value for two byte, four byte and
@@ -248,21 +248,21 @@ func (n *NodeID) SetIntID(v uint32) error {
 		if max := uint32(math.MaxUint8); v > max {
 			return errors.Errorf("out of range [0..%d]: %d", max, v)
 		}
-		n.nid = uint32(v)
+		n.Nid = uint32(v)
 		return nil
 
 	case NodeIDTypeFourByte:
 		if max := uint32(math.MaxUint16); v > max {
 			return errors.Errorf("out of range [0..%d]: %d", max, v)
 		}
-		n.nid = uint32(v)
+		n.Nid = uint32(v)
 		return nil
 
 	case NodeIDTypeNumeric:
 		if max := uint32(math.MaxUint32); v > max {
 			return errors.Errorf("out of range [0..%d]: %d", max, v)
 		}
-		n.nid = uint32(v)
+		n.Nid = uint32(v)
 		return nil
 
 	default:
@@ -277,14 +277,14 @@ func (n *NodeID) SetIntID(v uint32) error {
 func (n *NodeID) StringID() string {
 	switch n.Type() {
 	case NodeIDTypeGUID:
-		if n.gid == nil {
+		if n.Gid == nil {
 			return ""
 		}
-		return n.gid.String()
+		return n.Gid.String()
 	case NodeIDTypeString:
-		return string(n.bid)
+		return string(n.Bid)
 	case NodeIDTypeByteString:
-		return base64.StdEncoding.EncodeToString(n.bid)
+		return base64.StdEncoding.EncodeToString(n.Bid)
 	default:
 		return ""
 	}
@@ -295,11 +295,11 @@ func (n *NodeID) StringID() string {
 func (n *NodeID) SetStringID(v string) error {
 	switch n.Type() {
 	case NodeIDTypeGUID:
-		n.gid = NewGUID(v)
+		n.Gid = NewGUID(v)
 		return nil
 
 	case NodeIDTypeString:
-		n.bid = []byte(v)
+		n.Bid = []byte(v)
 		return nil
 
 	case NodeIDTypeByteString:
@@ -307,7 +307,7 @@ func (n *NodeID) SetStringID(v string) error {
 		if err != nil {
 			return err
 		}
-		n.bid = b
+		n.Bid = b
 		return nil
 
 	default:
@@ -320,37 +320,37 @@ func (n *NodeID) SetStringID(v string) error {
 func (n *NodeID) String() string {
 	switch n.Type() {
 	case NodeIDTypeTwoByte:
-		return fmt.Sprintf("i=%d", n.nid)
+		return fmt.Sprintf("i=%d", n.Nid)
 
 	case NodeIDTypeFourByte:
-		if n.ns == 0 {
-			return fmt.Sprintf("i=%d", n.nid)
+		if n.Ns == 0 {
+			return fmt.Sprintf("i=%d", n.Nid)
 		}
-		return fmt.Sprintf("ns=%d;i=%d", n.ns, n.nid)
+		return fmt.Sprintf("ns=%d;i=%d", n.Ns, n.Nid)
 
 	case NodeIDTypeNumeric:
-		if n.ns == 0 {
-			return fmt.Sprintf("i=%d", n.nid)
+		if n.Ns == 0 {
+			return fmt.Sprintf("i=%d", n.Nid)
 		}
-		return fmt.Sprintf("ns=%d;i=%d", n.ns, n.nid)
+		return fmt.Sprintf("ns=%d;i=%d", n.Ns, n.Nid)
 
 	case NodeIDTypeString:
-		if n.ns == 0 {
+		if n.Ns == 0 {
 			return fmt.Sprintf("s=%s", n.StringID())
 		}
-		return fmt.Sprintf("ns=%d;s=%s", n.ns, n.StringID())
+		return fmt.Sprintf("ns=%d;s=%s", n.Ns, n.StringID())
 
 	case NodeIDTypeGUID:
-		if n.ns == 0 {
+		if n.Ns == 0 {
 			return fmt.Sprintf("g=%s", n.StringID())
 		}
-		return fmt.Sprintf("ns=%d;g=%s", n.ns, n.StringID())
+		return fmt.Sprintf("ns=%d;g=%s", n.Ns, n.StringID())
 
 	case NodeIDTypeByteString:
-		if n.ns == 0 {
+		if n.Ns == 0 {
 			return fmt.Sprintf("o=%s", n.StringID())
 		}
-		return fmt.Sprintf("ns=%d;o=%s", n.ns, n.StringID())
+		return fmt.Sprintf("ns=%d;o=%s", n.Ns, n.StringID())
 
 	default:
 		panic(fmt.Sprintf("invalid node id type: %d", n.Type()))
@@ -360,33 +360,33 @@ func (n *NodeID) String() string {
 func (n *NodeID) Decode(b []byte) (int, error) {
 	buf := NewBuffer(b)
 
-	n.mask = NodeIDType(buf.ReadByte())
-	typ := n.mask & 0xf
+	n.Mask = NodeIDType(buf.ReadByte())
+	typ := n.Mask & 0xf
 
 	switch typ {
 	case NodeIDTypeTwoByte:
-		n.nid = uint32(buf.ReadByte())
+		n.Nid = uint32(buf.ReadByte())
 		return buf.Pos(), buf.Error()
 
 	case NodeIDTypeFourByte:
-		n.ns = uint16(buf.ReadByte())
-		n.nid = uint32(buf.ReadUint16())
+		n.Ns = uint16(buf.ReadByte())
+		n.Nid = uint32(buf.ReadUint16())
 		return buf.Pos(), buf.Error()
 
 	case NodeIDTypeNumeric:
-		n.ns = buf.ReadUint16()
-		n.nid = buf.ReadUint32()
+		n.Ns = buf.ReadUint16()
+		n.Nid = buf.ReadUint32()
 		return buf.Pos(), buf.Error()
 
 	case NodeIDTypeGUID:
-		n.ns = buf.ReadUint16()
-		n.gid = &GUID{}
-		buf.ReadStruct(n.gid)
+		n.Ns = buf.ReadUint16()
+		n.Gid = &GUID{}
+		buf.ReadStruct(n.Gid)
 		return buf.Pos(), buf.Error()
 
 	case NodeIDTypeByteString, NodeIDTypeString:
-		n.ns = buf.ReadUint16()
-		n.bid = buf.ReadBytes()
+		n.Ns = buf.ReadUint16()
+		n.Bid = buf.ReadBytes()
 		return buf.Pos(), buf.Error()
 
 	default:
@@ -396,23 +396,23 @@ func (n *NodeID) Decode(b []byte) (int, error) {
 
 func (n *NodeID) Encode() ([]byte, error) {
 	buf := NewBuffer(nil)
-	buf.WriteByte(byte(n.mask))
+	buf.WriteByte(byte(n.Mask))
 
 	switch n.Type() {
 	case NodeIDTypeTwoByte:
-		buf.WriteByte(byte(n.nid))
+		buf.WriteByte(byte(n.Nid))
 	case NodeIDTypeFourByte:
-		buf.WriteByte(byte(n.ns))
-		buf.WriteUint16(uint16(n.nid))
+		buf.WriteByte(byte(n.Ns))
+		buf.WriteUint16(uint16(n.Nid))
 	case NodeIDTypeNumeric:
-		buf.WriteUint16(n.ns)
-		buf.WriteUint32(n.nid)
+		buf.WriteUint16(n.Ns)
+		buf.WriteUint32(n.Nid)
 	case NodeIDTypeGUID:
-		buf.WriteUint16(n.ns)
-		buf.WriteStruct(n.gid)
+		buf.WriteUint16(n.Ns)
+		buf.WriteStruct(n.Gid)
 	case NodeIDTypeByteString, NodeIDTypeString:
-		buf.WriteUint16(n.ns)
-		buf.WriteByteString(n.bid)
+		buf.WriteUint16(n.Ns)
+		buf.WriteByteString(n.Bid)
 	default:
 		return nil, errors.Errorf("invalid node id type %v", n.Type())
 	}
