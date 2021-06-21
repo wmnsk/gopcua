@@ -353,7 +353,7 @@ func (s *Subscription) RemoveNodeIDs(nodes ...*ua.NodeID) error {
 
 	for _, node := range nodes {
 		for _, item := range s.itemLookup {
-			if item.nodeID == node {
+			if item.nodeID.String() == node.String() {
 				toRemove = append(toRemove, item)
 				break
 			}
