@@ -5,6 +5,7 @@
 package ua
 
 import (
+	"fmt"
 	"reflect"
 	"time"
 
@@ -26,7 +27,7 @@ const (
 
 // Variant is a union of the built-in types.
 //
-// Specification: Part 6, 5.2.2.16
+// Specification: Part 6, 5.1.2 Table 1
 type Variant struct {
 	// mask contains the type and the array flags
 	// bits 0:5: built-in type id 1-25
@@ -57,8 +58,58 @@ type Variant struct {
 	value interface{}
 }
 
+func variantTypeIsBuiltin(v interface{}) bool {
+	if v == nil {
+		// we accept nil
+		return true
+	}
+	switch v.(type) {
+	case
+		bool,
+		int8,
+		byte,
+		int16,
+		uint16,
+		int32,
+		uint32,
+		int64,
+		uint64,
+		float32,
+		float64,
+		string,
+		time.Time,
+		*GUID,
+		[]byte,
+		XMLElement,
+		*NodeID,
+		*ExpandedNodeID,
+		StatusCode,
+		*QualifiedName,
+		*LocalizedText,
+		*ExtensionObject,
+		*DataValue,
+		*Variant,
+		*DiagnosticInfo:
+		return true
+	default:
+		// it can be an array, or slice of some builtin
+		v := reflect.ValueOf(v)
+		switch v.Type().Kind() {
+		case reflect.Array, reflect.Slice:
+			innerType := v.Type().Elem()
+			zeroValue := reflect.New(innerType).Elem().Interface()
+			return variantTypeIsBuiltin(zeroValue)
+		default:
+			return false
+		}
+	}
+}
+
 func NewVariant(v interface{}) (*Variant, error) {
 	va := &Variant{}
+	if !variantTypeIsBuiltin(v) {
+		return nil, fmt.Errorf("trying to create a variant from a type that it is not suppoted: %s", reflect.ValueOf(v).Type().Name())
+	}
 	if err := va.set(v); err != nil {
 		return nil, err
 	}
@@ -462,7 +513,7 @@ func (m *Variant) set(v interface{}) error {
 
 	typeid, ok := variantTypeToTypeID[et]
 	if !ok {
-		return errors.Errorf("cannot set variant to %T", v)
+		typeid = TypeIDVariant
 	}
 	m.setType(typeid)
 	m.value = v
