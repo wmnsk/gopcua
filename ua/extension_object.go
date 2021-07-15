@@ -15,7 +15,7 @@ var eotypes = NewTypeRegistry()
 // RegisterExtensionObject registers a new extension object type.
 // It panics if the type or the id is already registered.
 func RegisterExtensionObject(typeID *NodeID, v interface{}) {
-	if err := eotypes.Register(typeID.String(), v); err != nil {
+	if err := eotypes.Register(typeID, v); err != nil {
 		panic("Extension object " + err.Error())
 	}
 }
@@ -73,7 +73,7 @@ func (e *ExtensionObject) Decode(b []byte) (int, error) {
 		return buf.Pos(), body.Error()
 	}
 
-	typeID := e.TypeID.NodeID.String()
+	typeID := e.TypeID.NodeID
 	e.Value = eotypes.New(typeID)
 	if e.Value == nil {
 		return buf.Pos(), errors.Errorf("invalid extension object with id %s", typeID)
@@ -127,6 +127,9 @@ func ExtensionObjectTypeID(v interface{}) *ExpandedNodeID {
 	case *ServerStatusDataType:
 		return NewFourByteExpandedNodeID(0, id.ServerStatusDataType_Encoding_DefaultBinary)
 	default:
+		if id := eotypes.Lookup(v); id != nil {
+			return &ExpandedNodeID{NodeID: id}
+		}
 		return NewTwoByteExpandedNodeID(0)
 	}
 }

@@ -11,7 +11,13 @@ import (
 	"github.com/pascaldekloe/goe/verify"
 )
 
+type Complex struct {
+	i, j int64
+}
+
 func TestCallMethod(t *testing.T) {
+	ua.RegisterExtensionObject(ua.NewStringNodeID(2, "ComplexType"), new(Complex))
+
 	tests := []struct {
 		req *ua.CallMethodRequest
 		out []*ua.Variant
@@ -25,6 +31,26 @@ func TestCallMethod(t *testing.T) {
 				},
 			},
 			out: []*ua.Variant{ua.MustVariant(true)},
+		},
+		{
+			req: &ua.CallMethodRequest{
+				ObjectID: ua.NewStringNodeID(2, "main"),
+				MethodID: ua.NewStringNodeID(2, "square"),
+				InputArguments: []*ua.Variant{
+					ua.MustVariant(int64(3)),
+				},
+			},
+			out: []*ua.Variant{ua.MustVariant(int64(9))},
+		},
+		{
+			req: &ua.CallMethodRequest{
+				ObjectID: ua.NewStringNodeID(2, "main"),
+				MethodID: ua.NewStringNodeID(2, "sumOfSquare"),
+				InputArguments: []*ua.Variant{
+					ua.MustVariant(ua.NewExtensionObject(&Complex{3, 8})),
+				},
+			},
+			out: []*ua.Variant{ua.MustVariant(int64(9 + 64))},
 		},
 	}
 

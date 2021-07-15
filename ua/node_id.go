@@ -80,6 +80,17 @@ func NewByteStringNodeID(ns uint16, id []byte) *NodeID {
 	}
 }
 
+// MustParseNodeID returns a node id from a string definition
+// if it is parseable by ParseNodeID. Otherwise, the function
+// panics.
+func MustParseNodeID(s string) *NodeID {
+	id, err := ParseNodeID(s)
+	if err != nil {
+		panic(err.Error())
+	}
+	return id
+}
+
 // ParseNodeID returns a node id from a string definition of the format
 // 'ns=<namespace>;{s,i,b,g}=<identifier>'.
 //
@@ -89,7 +100,6 @@ func NewByteStringNodeID(ns uint16, id []byte) *NodeID {
 // and id value is returned.
 //
 // Namespace URLs 'nsu=' are not supported since they require a lookup.
-//
 func ParseNodeID(s string) (*NodeID, error) {
 	if s == "" {
 		return NewTwoByteNodeID(0), nil
